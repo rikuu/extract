@@ -11,14 +11,23 @@ CPP_FLAGS+=$(OPT_FLAGS)
 HTS_PATH=../htslib
 HTS_FLAGS=-I$(HTS_PATH)/ -L$(HTS_PATH)/ -lhts
 
-SOURCES=io.cpp hash.cpp bam_bed_extract.cpp
+SOURCES=io.cpp hash.cpp extract.cpp
+TESTS=extract-test.cpp hash-test.cpp
+
+BINARIES=extract extract-test
 
 default: all
 
 extract:
 		$(CXX) $(CPP_FLAGS) -o $@ $(SOURCES) $(HTS_FLAGS)
 
-all: extract
+all: $(BINARIES)
+
+catch.hpp:
+		curl -O https://raw.githubusercontent.com/philsquared/Catch/master/single_include/catch.hpp
+
+extract-test: catch.hpp hash.cpp $(TESTS)
+		$(CXX) $(CPP_FLAGS) -o $@ $(filter-out %.hpp,$^) $(HTS_FLAGS)
 
 clean:
 		rm -rf $(BINARIES) *.o *.dSYM
