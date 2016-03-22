@@ -1,3 +1,5 @@
+// Copyright 2016 Riku Walve
+
 #include <string>
 #include <iostream>
 #include <vector>
@@ -28,7 +30,7 @@ io_t load(const std::string &samFilename) {
   }
 
   io.idx = sam_index_load(io.sam, samFilename.c_str());
-	if (io.idx == NULL) {
+  if (io.idx == NULL) {
     std::cerr << "ERROR: SAM index not found!" << std::endl;
     return io;
   }
@@ -37,6 +39,7 @@ io_t load(const std::string &samFilename) {
   return io;
 }
 
+// Converts an alignment to std::string. Handles reverse complements.
 std::string convertToString(const uint8_t *query, const int32_t length,
     const bool reverse) {
   char* string = new char[length];

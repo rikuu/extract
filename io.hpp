@@ -1,5 +1,6 @@
+// Copyright 2016 Riku Walve
+
 #include <string>
-#include <cstring>
 
 #include "htslib/sam.h"
 

@@ -1,11 +1,8 @@
+// Copyright 2016 Riku Walve
+
 #include <string>
 #include <iostream>
 #include <vector>
-
-#include <sstream>
-#include <fstream>
-
-#include <cstring>
 
 #include "htslib/sam.h"
 
@@ -14,7 +11,7 @@
 
 void process_region(const io_t, const int, const int, const int);
 std::vector<size_t> process_mates(const io_t, const int, const int, const int);
-void find_mates(const io_t, std::vector<size_t> &);
+void find_mates(const io_t, const std::vector<size_t> &);
 
 void process_region(const io_t io, const int tid, const int start,
     const int end) {
@@ -24,15 +21,16 @@ void process_region(const io_t io, const int tid, const int start,
     return;
   }
 
-	bam1_t *bam = bam_init1();
-	while (sam_itr_next(io.sam, iter, bam) >= 0) {
-    std::cout << '>' << bam_get_qname(bam) << '/' <<
-      (((bam->core.flag & BAM_FREAD1) != 0) ? '1' : '2') << '\n' <<
-      convertToString(bam_get_seq(bam), bam->core.l_qseq, bam_is_rev(bam)) << std::endl;
+  bam1_t *bam = bam_init1();
+  while (sam_itr_next(io.sam, iter, bam) >= 0) {
+    std::cout << '>' << bam_get_qname(bam) << '/'
+      << (((bam->core.flag & BAM_FREAD1) != 0) ? '1' : '2') << '\n'
+      << convertToString(bam_get_seq(bam), bam->core.l_qseq, bam_is_rev(bam))
+      << std::endl;
   }
 
-	hts_itr_destroy(iter);
-	bam_destroy1(bam);
+  hts_itr_destroy(iter);
+  bam_destroy1(bam);
 }
 
 std::vector<size_t> process_mates(const io_t io, const int tid, const int start,
@@ -45,30 +43,28 @@ std::vector<size_t> process_mates(const io_t io, const int tid, const int start,
     return reads;
   }
 
-	bam1_t *bam = bam_init1();
-	while (sam_itr_next(io.sam, iter, bam) >= 0) {
+  bam1_t *bam = bam_init1();
+  while (sam_itr_next(io.sam, iter, bam) >= 0) {
     if ((bam->core.flag & BAM_FMUNMAP) != 0) {
-      /*std::cout << '>' << bam_get_qname(bam) << '/' <<
-        (((bam->core.flag & BAM_FREAD1) != 0) ? '1' : '2') << std::endl;*/
       reads.push_back(hash_alignment1(bam));
     }
   }
 
-	hts_itr_destroy(iter);
-	bam_destroy1(bam);
+  hts_itr_destroy(iter);
+  bam_destroy1(bam);
 
   return reads;
 }
 
-void find_mates(const io_t io, std::vector<size_t> &alignments) {
-  hts_itr_t *iter = sam_itr_querys(io.idx, io.header, "."); //"*");
+void find_mates(const io_t io, const std::vector<size_t> &alignments) {
+  hts_itr_t *iter = sam_itr_querys(io.idx, io.header, ".");
   if (iter == NULL) {
     std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
     return;
   }
 
-	bam1_t *bam = bam_init1();
-	while (sam_itr_next(io.sam, iter, bam) >= 0) {
+  bam1_t *bam = bam_init1();
+  while (sam_itr_next(io.sam, iter, bam) >= 0) {
     if (in_alignments(alignments, hash_alignment2(bam))) {
       std::cout << '>' << bam_get_qname(bam) << '/'
         << (((bam->core.flag & BAM_FREAD1) != 0) ? '1' : '2') << '\n'
@@ -77,8 +73,8 @@ void find_mates(const io_t io, std::vector<size_t> &alignments) {
     }
   }
 
-	hts_itr_destroy(iter);
-	bam_destroy1(bam);
+  hts_itr_destroy(iter);
+  bam_destroy1(bam);
 }
 
 int main(int argc, char* argv[]) {
@@ -119,7 +115,7 @@ int main(int argc, char* argv[]) {
   }
 
   bam_hdr_destroy(io.header);
-	sam_close(io.sam);
+  sam_close(io.sam);
 
   return 0;
 }

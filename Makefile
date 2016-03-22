@@ -21,13 +21,16 @@ default: all
 extract:
 		$(CXX) $(CPP_FLAGS) -o $@ $(SOURCES) $(HTS_FLAGS)
 
-all: $(BINARIES)
+all: $(BINARIES) run-tests
 
 catch.hpp:
 		curl -O https://raw.githubusercontent.com/philsquared/Catch/master/single_include/catch.hpp
 
 extract-test: catch.hpp hash.cpp $(TESTS)
 		$(CXX) $(CPP_FLAGS) -o $@ $(filter-out %.hpp,$^) $(HTS_FLAGS)
+
+run-tests: extract-test
+		./extract-test
 
 clean:
 		rm -rf $(BINARIES) *.o *.dSYM
