@@ -12,7 +12,7 @@ HTS_PATH=../htslib
 HTS_FLAGS=-I$(HTS_PATH)/ -L$(HTS_PATH)/ -lhts
 
 SOURCES=io.cpp hash.cpp extract.cpp
-TESTS=extract-test.cpp hash-test.cpp
+TESTS=io-test.cpp hash-test.cpp extract-test.cpp
 
 BINARIES=extract extract-test
 
@@ -26,7 +26,7 @@ all: $(BINARIES) run-tests
 catch.hpp:
 		curl -O https://raw.githubusercontent.com/philsquared/Catch/master/single_include/catch.hpp
 
-extract-test: catch.hpp hash.cpp $(TESTS)
+extract-test: catch.hpp hash.cpp io.cpp $(TESTS)
 		$(CXX) $(CPP_FLAGS) -o $@ $(filter-out %.hpp,$^) $(HTS_FLAGS)
 
 run-tests: extract-test
