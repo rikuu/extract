@@ -67,7 +67,7 @@ std::string convertToString(const uint8_t *query, const int32_t length,
 
   string[length] = '\0';
   std::string result(string);
-  delete string;
+  delete[] string;
 
   return result;
 }

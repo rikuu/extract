@@ -14,23 +14,21 @@ HTS_FLAGS=-I$(HTS_PATH)/ -L$(HTS_PATH)/ -lhts
 SOURCES=io.cpp hash.cpp extract.cpp
 TESTS=io-test.cpp hash-test.cpp extract-test.cpp
 
-BINARIES=extract extract-test
-
 default: all
 
-extract:
-		$(CXX) $(CPP_FLAGS) -o $@ $(SOURCES) $(HTS_FLAGS)
-
-all: $(BINARIES) run-tests
+all: extract run-tests
 
 catch.hpp:
-		curl -O https://raw.githubusercontent.com/philsquared/Catch/master/single_include/catch.hpp
+	curl -O https://raw.githubusercontent.com/philsquared/Catch/master/single_include/catch.hpp
 
-extract-test: catch.hpp hash.cpp io.cpp $(TESTS)
-		$(CXX) $(CPP_FLAGS) -o $@ $(filter-out %.hpp,$^) $(HTS_FLAGS)
+extract:
+	$(CXX) $(CPP_FLAGS) -o $@ $(SOURCES) main.cpp $(HTS_FLAGS)
+
+extract-test: catch.hpp
+	$(CXX) $(CPP_FLAGS) -o $@ $(SOURCES) $(TESTS) $(HTS_FLAGS)
 
 run-tests: extract-test
-		./extract-test
+	./extract-test
 
 clean:
-		rm -rf $(BINARIES) *.o *.dSYM
+	rm -f catch.hpp extract extract-test *.o *.dSYM
