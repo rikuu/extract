@@ -31,4 +31,4 @@ run-tests: extract-test
 	./extract-test
 
 clean:
-	rm -f catch.hpp extract extract-test *.o *.dSYM
+	rm -f extract extract-test *.o *.dSYM

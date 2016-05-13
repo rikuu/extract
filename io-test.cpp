@@ -37,6 +37,8 @@ TEST_CASE("Sequence querying works", "[io]") {
 }
 
 TEST_CASE("Sequence converting works", "[io]") {
-  REQUIRE(convertToString(sequence, length, false) == "ATGCTGTCTN");
-  REQUIRE(convertToString(sequence, length, true) == "NAGACAGCAT");
+  char *buffer = new char[length];
+  REQUIRE(convertToString(sequence, length, false, buffer) == "ATGCTGTCTN");
+  REQUIRE(convertToString(sequence, length, true, buffer) == "NAGACAGCAT");
+  delete[] buffer;
 }
