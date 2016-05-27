@@ -9,6 +9,7 @@
 #include "io.hpp"
 #include "hash.hpp"
 #include "extract.hpp"
+#include "iterator.hpp"
 
 void print_fasta(const bam1_t *bam, char* buffer) {
   const std::string sequence = convertToString(bam_get_seq(bam),
@@ -28,67 +29,40 @@ void print_fasta(const bam1_t *bam, char* buffer) {
 
 void process_region(const io_t io, const int tid, const int start,
     const int end, char* buffer) {
-  hts_itr_t *iter = sam_itr_queryi(io.idx, tid, start, end);
-  if (iter == NULL) {
-    std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
-    return;
+  iterator iter(io, tid, start, end);
+  while (iter.next()) {
+    print_fasta(iter.bam, buffer);
   }
-
-  bam1_t *bam = bam_init1();
-  while (sam_itr_next(io.sam, iter, bam) >= 0) {
-    print_fasta(bam, buffer);
-  }
-
-  hts_itr_destroy(iter);
-  bam_destroy1(bam);
 }
 
 std::vector<size_t> process_mates(const io_t io, const int tid, const int start,
     const int end) {
   std::vector<size_t> reads;
 
-  hts_itr_t *iter = sam_itr_queryi(io.idx, tid, start, end);
-  if (iter == NULL) {
-    std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
-    return reads;
-  }
-
-  bam1_t *bam = bam_init1();
-  while (sam_itr_next(io.sam, iter, bam) >= 0) {
-    if ((bam->core.flag & BAM_FMUNMAP) != 0) {
-      reads.push_back(hash_alignment1(bam));
+  iterator iter(io, tid, start, end);
+  while (iter.next()) {
+    if ((iter.bam->core.flag & BAM_FMUNMAP) != 0) {
+      reads.push_back(hash_alignment1(iter.bam));
     }
   }
-
-  hts_itr_destroy(iter);
-  bam_destroy1(bam);
 
   return reads;
 }
 
 void find_mates(const io_t io, const std::vector<size_t> &alignments,
     char *buffer) {
-  hts_itr_t *iter = sam_itr_querys(io.idx, io.header, ".");
-  if (iter == NULL) {
-    std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
-    return;
-  }
-
-  bam1_t *bam = bam_init1();
-  while (sam_itr_next(io.sam, iter, bam) >= 0) {
-    if (in_alignments(alignments, hash_alignment2(bam))) {
-      print_fasta(bam, buffer);
+  iterator iter(io, ".");
+  while (iter.next()) {
+    if (in_alignments(alignments, hash_alignment2(iter.bam))) {
+      print_fasta(iter.bam, buffer);
     }
   }
-
-  hts_itr_destroy(iter);
-  bam_destroy1(bam);
 }
 
 void run_extract(const io_t pe1_io, const io_t pe2_io,
     const int read_length, const int mean_insert, const int std_dev,
     const int tid, const int start, const int end) {
-  // Reserve memory for string conversions
+  // Allocate memory for string conversions
   char *buffer = new char[read_length+1];
 
   // Extract reads from the overlap
@@ -125,7 +99,7 @@ void run_extract(const io_t pe1_io, const io_t pe2_io,
 void run_extract(const io_t io,
     const int read_length, const int mean_insert, const int std_dev,
     const int tid, const int start, const int end) {
-  // Reserve memory for string conversions
+  // Allocate memory for string conversions
   char *buffer = new char[read_length+1];
 
   // Extract reads from the overlap

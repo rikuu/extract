@@ -14,19 +14,19 @@
 io_t::io_t(const std::string &samFilename) {
   this->sam = sam_open(samFilename.c_str(), "r");
   if (this->sam == NULL) {
-    std::cerr << "ERROR: SAM file not found!" << std::endl;
+    // std::cerr << "ERROR: SAM file not found!" << std::endl;
     return;
   }
 
   this->header = sam_hdr_read(this->sam);
   if (this->header == NULL) {
-    std::cerr << "ERROR: SAM header error!" << std::endl;
+    // std::cerr << "ERROR: SAM header error!" << std::endl;
     return;
   }
 
   this->idx = sam_index_load(this->sam, samFilename.c_str());
   if (this->idx == NULL) {
-    std::cerr << "ERROR: SAM index not found!" << std::endl;
+    // std::cerr << "ERROR: SAM index not found!" << std::endl;
     return;
   }
 
