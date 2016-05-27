@@ -1,3 +1,5 @@
+#include <functional>
+
 #include "htslib/sam.h"
 
 #include "io.hpp"
@@ -8,35 +10,58 @@
 class iterator {
 private:
   samFile *m_sam;
+  hts_itr_t *m_iter;
 
 public:
-  hts_itr_t *iter;
   bam1_t *bam;
 
   iterator(const io_t io, const int tid, const int start, const int end)
       : m_sam(io.sam), bam(bam_init1()) {
-    iter = sam_itr_queryi(io.idx, tid, start, end);
-    if (iter == NULL) {
+    m_iter = sam_itr_queryi(io.idx, tid, start, end);
+    if (m_iter == NULL) {
       std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
     }
   }
 
   iterator(const io_t io, const char *string)
       : m_sam(io.sam), bam(bam_init1()) {
-    iter = sam_itr_querys(io.idx, io.header, string);
-    if (iter == NULL) {
+    m_iter = sam_itr_querys(io.idx, io.header, string);
+    if (m_iter == NULL) {
       std::cerr << "ERROR: SAM iterator is NULL!" << std::endl;
     }
   }
 
   ~iterator() {
-    hts_itr_destroy(iter);
+    hts_itr_destroy(m_iter);
     bam_destroy1(bam);
   }
 
   inline bool next() {
-    if (iter == NULL) return false;
-    return (sam_itr_next(m_sam, iter, bam) >= 0);
+    if (m_iter == NULL) return false;
+    return (sam_itr_next(m_sam, m_iter, bam) >= 0);
+  }
+
+  void map(const std::function<void(bam1_t *)> &lambda) {
+    #pragma omp parallel
+    {
+      bam1_t *tbam = bam_init1();
+
+      int ret;
+      while (true) {
+        #pragma omp critical
+        {
+          ret = sam_itr_next(m_sam, m_iter, tbam);
+        }
+
+        if (ret < 0) {
+          break;
+        }
+
+        lambda(tbam);
+      }
+
+      bam_destroy1(tbam);
+    }
   }
 };
 

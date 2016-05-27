@@ -59,5 +59,5 @@ std::string convertToString(const uint8_t *query, const int32_t length,
   }
 
   buffer[length] = '\0';
-  return std::string(buffer);;
+  return std::string(buffer);
 }
