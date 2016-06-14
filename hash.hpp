@@ -7,6 +7,8 @@
 #ifndef EXTRACT_HASH_HPP
 #define EXTRACT_HASH_HPP
 
+#define BLOOM_SIZE 1024
+
 // Hashes a string
 size_t hash_str(const char *);
 
@@ -21,39 +23,30 @@ inline size_t hash_alignment2(const bam1_t *bam) {
     ((((bam->core.flag & BAM_FREAD2) != 0) ? 1 : 2) << 8);
 }
 
+// TODO: Use multiple hash functions to reduce collisions
 class bloom {
 private:
-  std::vector<size_t> alignments;
+  std::vector<bool> vector;
 
 public:
-  bloom() {}
+  bloom() {
+    vector.resize(BLOOM_SIZE);
+  }
 
   inline void clear() {
-    alignments.clear();
+    vector.assign(BLOOM_SIZE, false);
   }
 
   inline void push(const bam1_t *bam) {
-    alignments.push_back(hash_alignment1(bam));
+    const size_t hash = hash_alignment1(bam);
+    vector[hash % BLOOM_SIZE] = true;
   }
 
   // Checks if an alignment is in a vector.
-  // This is basically a slower bloom filter.
-  bool in_alignments(const bam1_t *bam) const {
+  inline bool in_alignments(const bam1_t *bam) const {
     const size_t hash = hash_alignment2(bam);
-
-    for (size_t i = 0; i < alignments.size(); i++) {
-      if (alignments[i] == hash) {
-        return true;
-      }
-    }
-
-    return false;
+    return vector[hash % BLOOM_SIZE];
   }
-
-  // inline bool in_alignments(const std::vector<bool> &alignments,
-  //     const size_t hash) const {
-  //   return alignments[hash % BLOOM_SIZE];
-  // }
 };
 
 #endif
