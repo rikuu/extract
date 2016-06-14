@@ -95,45 +95,6 @@ void process_unmapped(const io_t io, char* buffer) {
   //iter.map([&buffer](bam1_t *bam) -> void { print_fasta(bam, buffer); });
 }
 
-void run_extract(const io_t pe1_io, const io_t pe2_io,
-    const int read_length, const int mean_insert, const int std_dev,
-    const int tid, const int start, const int end) {
-  // Allocate memory for string conversions
-  char *buffer = new char[read_length+1];
-
-  size_t seqlen = 0;
-
-  // Extract reads from the overlap
-  seqlen += process_region(pe1_io, tid, start, end, buffer);
-  seqlen += process_region(pe2_io, tid, start, end, buffer);
-
-  // Extract pairs from the left mappings
-  {
-    const int left_start = start - (int) (ceilf(mean_insert + (1.96f*std_dev)) + 2*read_length);
-    const int left_end = end - (int) (floorf(mean_insert - (1.96f*std_dev)) + read_length);
-    std::vector<size_t> left = process_mates(pe1_io, tid, left_start, left_end);
-    seqlen += find_mates(pe2_io, left, buffer);
-
-    // Figure this out
-    left = process_mates(pe2_io, tid, left_start, left_end);
-    seqlen += find_mates(pe1_io, left, buffer);
-  }
-
-  // Extract pairs from the right mappings
-  {
-    const int right_start = start + (int) (ceilf(mean_insert + (1.96f*std_dev)) + read_length);
-    const int right_end = end + (int) (floorf(mean_insert - (1.96f*std_dev)) + read_length);
-    std::vector<size_t> right = process_mates(pe2_io, tid, right_start, right_end);
-    seqlen += find_mates(pe1_io, right, buffer);
-
-    // Figure this out
-    right = process_mates(pe1_io, tid, right_start, right_end);
-    seqlen += find_mates(pe2_io, right, buffer);
-  }
-
-  delete[] buffer;
-}
-
 void run_extract(const io_t io,
     const int read_length, const int mean_insert, const int std_dev,
     const int tid, const int start, const int end) {
@@ -147,20 +108,21 @@ void run_extract(const io_t io,
 
   // Extract pairs from the left mappings
   {
-    const int left_start = start - (int) (ceilf(mean_insert + (1.96f*std_dev)) + 2*read_length);
-    const int left_end = end - (int) (floorf(mean_insert - (1.96f*std_dev)) + read_length);
+    const int left_start = start - (mean_insert + (3*std_dev) + 2*read_length);
+    const int left_end = end - (mean_insert - (3*std_dev) + read_length);
     std::vector<size_t> left = process_mates(io, tid, left_start, left_end);
     seqlen += find_mates(io, left, buffer);
   }
 
   // Extract pairs from the right mappings
   {
-    const int right_start = start + (int) (ceilf(mean_insert + (1.96f*std_dev)) + read_length);
-    const int right_end = end + (int) (floorf(mean_insert - (1.96f*std_dev)) + read_length);
+    const int right_start = start + (mean_insert + (3*std_dev) + read_length);
+    const int right_end = end + (mean_insert - (3*std_dev) + read_length);
     std::vector<size_t> right = process_mates(io, tid, right_start, right_end);
     seqlen += find_mates(io, right, buffer);
   }
 
+  // TODO: Make this not hard-coded
   if (seqlen / (end - start) < 25) {
     process_unmapped(io, buffer);
   }

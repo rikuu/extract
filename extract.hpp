@@ -14,10 +14,6 @@ std::vector<size_t> process_mates(const io_t, const int, const int, const int);
 size_t find_mates(const io_t, const std::vector<size_t> &, char*);
 void process_unmapped(const io_t, char*);
 
-void run_extract(const io_t, const io_t,
-    const int, const int, const int,
-    const int, const int, const int);
-
 void run_extract(const io_t,
     const int, const int, const int,
     const int, const int, const int);

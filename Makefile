@@ -1,9 +1,11 @@
-CXX=clang++
+#CXX=clang++
+CXX=g++-5
 
-CPP_FLAGS=-m64 -std=c++11 -pedantic-errors -W -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual \
-					-Wunused -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings \
-					-Wbool-conversions -Wshift-overflow -Wliteral-conversion \
-					-Werror
+CPP_FLAGS=-m64 -std=c++11 -pedantic-errors -W -Wall -Wextra -Wshadow \
+					-Wpointer-arith -Wcast-qual -Wunused -Wwrite-strings -Werror -fopenmp
+
+CLANG_FLAGS=-Wbool-conversions -Wshift-overflow -Wliteral-conversion \
+						-Wstrict-prototypes -Wmissing-prototypes
 
 OPT_FLAGS=-O3 -mmmx -msse -msse2 -msse3 -msse4 -msse4.2 -march=native
 CPP_FLAGS+=$(OPT_FLAGS)
