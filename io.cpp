@@ -36,7 +36,7 @@ io_t::io_t(const std::string &samFilename) {
 // Converts an alignment to std::string. Handles reverse complements.
 std::string convertToString(const uint8_t *query, const int32_t length,
     const bool reverse, char* buffer) {
-  for (int i = 0; i < length; i++) {
+  for (int32_t i = 0; i < length; i++) {
     // TODO: Improve cache coherence by reversing blocks
     switch (querySequence(query, length, i, reverse)) {
       case 0x1:

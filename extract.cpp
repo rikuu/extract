@@ -30,18 +30,22 @@ void print_fasta(const bam1_t *bam, char* buffer) {
 }
 
 size_t process_region(const io_t io, const int tid, const int start,
-    const int end, char* buffer) {
+    const int end, char* buffer, const bloom &bloom) {
   size_t seqlen = 0;
 
   iterator iter(io, tid, start, end);
   while (iter.next()) {
-    print_fasta(iter.bam, buffer);
-    seqlen += strlen(buffer);
+    if (!bloom.contains(iter.bam)) {
+      print_fasta(iter.bam, buffer);
+      seqlen += strlen(buffer);
+    }
   }
 
-  // iter.map([&buffer, &seqlen] (bam1_t *bam) -> void {
-  //   print_fasta(bam, buffer);
-  //   seqlen += strlen(buffer);
+  // iter.map([&buffer, &seqlen, &bloom] (bam1_t *bam) -> void {
+  //   if (!bloom.contains(iter.bam)) {
+  //     print_fasta(bam, buffer);
+  //     seqlen += strlen(buffer);
+  //   }
   // });
 
   return seqlen;
@@ -56,7 +60,7 @@ void process_mates(const io_t io, const int tid, const int start,
     }
   }
 
-  // iter.map([&reads](bam1_t *bam) -> void {
+  // iter.map([&bloom](bam1_t *bam) -> void {
   //   if ((bam->core.flag & BAM_FMUNMAP) != 0) {
   //     bloom->push(iter.bam);
   //   }
@@ -68,7 +72,7 @@ size_t find_mates(const io_t io, char *buffer, const bloom &bloom) {
 
   iterator iter(io, ".");
   while (iter.next()) {
-    if (bloom.in_alignments(iter.bam)) {
+    if (bloom.contains_mate(iter.bam)) {
       print_fasta(iter.bam, buffer);
       seqlen += strlen(buffer);
     }
@@ -76,35 +80,32 @@ size_t find_mates(const io_t io, char *buffer, const bloom &bloom) {
 
   return seqlen;
 
-  // iter.map([&alignments, &buffer](bam1_t *bam) -> void {
+  // iter.map([&buffer, &bloom](bam1_t *bam) -> void {
   //   if (bloom.in_alignments(bam)) {
   //     print_fasta(bam, buffer);
   //   }
   // });
 }
 
-void process_unmapped(const io_t io, char* buffer) {
+void process_unmapped(const io_t io, char* buffer, const bloom& bloom) {
   iterator iter(io, ".");
   while (iter.next()) {
-    if ((iter.bam->core.flag & BAM_FUNMAP) != 0) {
+    if ((iter.bam->core.flag & BAM_FUNMAP) != 0 &&
+          !bloom.contains(iter.bam)) {
       print_fasta(iter.bam, buffer);
     }
   }
 
-  // iter.map([&buffer](bam1_t *bam) -> void { print_fasta(bam, buffer); });
+  // iter.map([&buffer, &bloom](bam1_t *bam) -> void {
+  //   if ((bam->core.flag & BAM_FUNMAP) != 0 && !bloom.contains(iter.bam)) {
+  //     print_fasta(bam, buffer);
+  //   }
+  // });
 }
 
 void run_extract(const io_t io,
     const int read_length, const int mean_insert, const int std_dev,
     const int tid, const int start, const int end) {
-  // Allocate memory for string conversions
-  char *buffer = new char[read_length+1];
-
-  size_t seqlen = 0;
-
-  // Extract reads from the overlap
-  seqlen += process_region(io, tid, start, end, buffer);
-
   bloom bloom;
 
   // Extract pairs from the left mappings
@@ -112,22 +113,25 @@ void run_extract(const io_t io,
     const int left_start = start - (mean_insert + (3*std_dev) + 2*read_length);
     const int left_end = end - (mean_insert - (3*std_dev) + read_length);
     process_mates(io, tid, left_start, left_end, &bloom);
-    seqlen += find_mates(io, buffer, bloom);
   }
-
-  bloom.clear();
 
   // Extract pairs from the right mappings
   {
     const int right_start = start + (mean_insert + (3*std_dev) + read_length);
     const int right_end = end + (mean_insert - (3*std_dev) + read_length);
     process_mates(io, tid, right_start, right_end, &bloom);
-    seqlen += find_mates(io, buffer, bloom);
   }
+
+  // Allocate memory for string conversions
+  char *buffer = new char[read_length+1];
+
+  const size_t seqlen =
+      process_region(io, tid, start, end, buffer, bloom) +
+      find_mates(io, buffer, bloom);
 
   // TODO: Make this not hard-coded
   if (seqlen / (end - start) < 25) {
-    process_unmapped(io, buffer);
+    process_unmapped(io, buffer, bloom);
   }
 
   delete[] buffer;

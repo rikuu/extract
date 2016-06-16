@@ -26,26 +26,34 @@ inline size_t hash_alignment2(const bam1_t *bam) {
 // TODO: Use multiple hash functions to reduce collisions
 class bloom {
 private:
-  std::vector<bool> vector;
+  std::vector<bool> m_vector;
 
 public:
   bloom() {
-    vector.resize(BLOOM_SIZE);
+    m_vector.resize(BLOOM_SIZE);
   }
 
+  // Clears the filter
   inline void clear() {
-    vector.assign(BLOOM_SIZE, false);
+    m_vector.assign(BLOOM_SIZE, false);
   }
 
+  // Adds an alignment to the filter
   inline void push(const bam1_t *bam) {
     const size_t hash = hash_alignment1(bam);
-    vector[hash % BLOOM_SIZE] = true;
+    m_vector[hash % BLOOM_SIZE] = true;
   }
 
-  // Checks if an alignment is in a vector.
-  inline bool in_alignments(const bam1_t *bam) const {
+  // Checks if an alignment is contained
+  inline bool contains(const bam1_t *bam) const {
+    const size_t hash = hash_alignment1(bam);
+    return m_vector[hash % BLOOM_SIZE];
+  }
+
+  // Checks if the mate of an alignment is contained
+  inline bool contains_mate(const bam1_t *bam) const {
     const size_t hash = hash_alignment2(bam);
-    return vector[hash % BLOOM_SIZE];
+    return m_vector[hash % BLOOM_SIZE];
   }
 };
 

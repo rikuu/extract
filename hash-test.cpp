@@ -58,24 +58,50 @@ TEST_CASE("Alignments are found", "[hash]") {
   bloom bloom;
   bloom.push(bam1a);
 
-  REQUIRE(!bloom.in_alignments(bam1a));
-  REQUIRE(bloom.in_alignments(bam1b));
-  REQUIRE(!bloom.in_alignments(bam2a));
-  REQUIRE(!bloom.in_alignments(bam2b));
+  SECTION("Contains 1") {
+    REQUIRE(bloom.contains(bam1a));
+    REQUIRE(!bloom.contains(bam1b));
+    REQUIRE(!bloom.contains(bam2a));
+    REQUIRE(!bloom.contains(bam2b));
+  }
+
+  SECTION("Contains 1 mate") {
+    REQUIRE(!bloom.contains_mate(bam1a));
+    REQUIRE(bloom.contains_mate(bam1b));
+    REQUIRE(!bloom.contains_mate(bam2a));
+    REQUIRE(!bloom.contains_mate(bam2b));
+  }
 
   bloom.push(bam2a);
 
-  REQUIRE(!bloom.in_alignments(bam1a));
-  REQUIRE(bloom.in_alignments(bam1b));
-  REQUIRE(!bloom.in_alignments(bam2a));
-  REQUIRE(bloom.in_alignments(bam2b));
+  SECTION("Contains 2") {
+    REQUIRE(bloom.contains(bam1a));
+    REQUIRE(!bloom.contains(bam1b));
+    REQUIRE(bloom.contains(bam2a));
+    REQUIRE(!bloom.contains(bam2b));
+  }
 
-  bloom.clear();
+  SECTION("Contains 2 mates") {
+    REQUIRE(!bloom.contains_mate(bam1a));
+    REQUIRE(bloom.contains_mate(bam1b));
+    REQUIRE(!bloom.contains_mate(bam2a));
+    REQUIRE(bloom.contains_mate(bam2b));
+  }
 
-  REQUIRE(!bloom.in_alignments(bam1a));
-  REQUIRE(!bloom.in_alignments(bam1b));
-  REQUIRE(!bloom.in_alignments(bam2a));
-  REQUIRE(!bloom.in_alignments(bam2b));
+  SECTION("Clear") {
+    bloom.clear();
+
+    REQUIRE(!bloom.contains(bam1a));
+    REQUIRE(!bloom.contains(bam1b));
+    REQUIRE(!bloom.contains(bam2a));
+    REQUIRE(!bloom.contains(bam2b));
+
+    REQUIRE(!bloom.contains_mate(bam1a));
+    REQUIRE(!bloom.contains_mate(bam1b));
+    REQUIRE(!bloom.contains_mate(bam2a));
+    REQUIRE(!bloom.contains_mate(bam2b));
+  }
+
 
   bam1a->data = NULL;
   bam1b->data = NULL;
