@@ -11,14 +11,16 @@
 #include "extract.hpp"
 
 int main(int argc, char* argv[]) {
-  if (argc != 8) {
-    std::cerr << argv[0] << " <in1>.bam [<in2>.bam]" <<
+  // TODO: Actual argument parsing
+  if (argc != 11) {
+    std::cerr << "Usage: " << argv[0] << " <alignment>.bam" <<
       " <read length> <mu> <sd>" <<
-      " <scaffold name> <gap start> <gap end>" << std::endl;
+      " <scaffold name> <gap start> <gap end>" <<
+      " <exact> <unmapped> <threshold>" << std::endl;
 
     return 1;
   }
-  
+
   io_t io(argv[1]);
   if (!io.loaded) {
     std::cerr << "Error loading alignments" << std::endl;
@@ -33,9 +35,14 @@ int main(int argc, char* argv[]) {
   const int start = std::stoi(argv[6]);
   const int end = std::stoi(argv[7]);
 
+  const bool exact = std::stoi(argv[8]) == 1;
+  const bool unmapped = std::stoi(argv[9]) == 1;
+  const int threshold = std::stoi(argv[10]);
+
   run_extract(io,
-    read_length, mean_insert,
-    std_dev, tid, start, end);
+    read_length, mean_insert, std_dev,
+    tid, start, end,
+    exact, unmapped, threshold);
 
   io.unload();
 

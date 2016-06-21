@@ -49,59 +49,69 @@ TEST_CASE("Hashes are computed", "[hash]") {
   }
 }
 
+// Dumb prototyping warnings
+void test_bloom(bam1_t *, bam1_t *, bam1_t *, bam1_t *, bloom_filter *);
+
+void test_bloom(bam1_t *bam1a, bam1_t *bam1b, bam1_t *bam2a, bam1_t *bam2b,
+    bloom_filter *bloom) {
+  bloom->push(bam1a);
+
+  SECTION("Contains 1") {
+    REQUIRE(bloom->contains(bam1a));
+    REQUIRE(!bloom->contains(bam1b));
+    REQUIRE(!bloom->contains(bam2a));
+    REQUIRE(!bloom->contains(bam2b));
+  }
+
+  SECTION("Contains 1 mate") {
+    REQUIRE(!bloom->contains_mate(bam1a));
+    REQUIRE(bloom->contains_mate(bam1b));
+    REQUIRE(!bloom->contains_mate(bam2a));
+    REQUIRE(!bloom->contains_mate(bam2b));
+  }
+
+  bloom->push(bam2a);
+
+  SECTION("Contains 2") {
+    REQUIRE(bloom->contains(bam1a));
+    REQUIRE(!bloom->contains(bam1b));
+    REQUIRE(bloom->contains(bam2a));
+    REQUIRE(!bloom->contains(bam2b));
+  }
+
+  SECTION("Contains 2 mates") {
+    REQUIRE(!bloom->contains_mate(bam1a));
+    REQUIRE(bloom->contains_mate(bam1b));
+    REQUIRE(!bloom->contains_mate(bam2a));
+    REQUIRE(bloom->contains_mate(bam2b));
+  }
+
+  SECTION("Clear") {
+    bloom->clear();
+
+    REQUIRE(!bloom->contains(bam1a));
+    REQUIRE(!bloom->contains(bam1b));
+    REQUIRE(!bloom->contains(bam2a));
+    REQUIRE(!bloom->contains(bam2b));
+
+    REQUIRE(!bloom->contains_mate(bam1a));
+    REQUIRE(!bloom->contains_mate(bam1b));
+    REQUIRE(!bloom->contains_mate(bam2a));
+    REQUIRE(!bloom->contains_mate(bam2b));
+  }
+}
+
 TEST_CASE("Alignments are found", "[hash]") {
   bam1_t *bam1a = construct_bam(string1, BAM_FREAD1);
   bam1_t *bam1b = construct_bam(string1, BAM_FREAD2);
   bam1_t *bam2a = construct_bam(string2, BAM_FREAD1);
   bam1_t *bam2b = construct_bam(string2, BAM_FREAD2);
 
-  bloom bloom;
-  bloom.push(bam1a);
+  bloom_exact bloom1 = bloom_exact();
+  bloom_hash bloom2 = bloom_hash();
 
-  SECTION("Contains 1") {
-    REQUIRE(bloom.contains(bam1a));
-    REQUIRE(!bloom.contains(bam1b));
-    REQUIRE(!bloom.contains(bam2a));
-    REQUIRE(!bloom.contains(bam2b));
-  }
-
-  SECTION("Contains 1 mate") {
-    REQUIRE(!bloom.contains_mate(bam1a));
-    REQUIRE(bloom.contains_mate(bam1b));
-    REQUIRE(!bloom.contains_mate(bam2a));
-    REQUIRE(!bloom.contains_mate(bam2b));
-  }
-
-  bloom.push(bam2a);
-
-  SECTION("Contains 2") {
-    REQUIRE(bloom.contains(bam1a));
-    REQUIRE(!bloom.contains(bam1b));
-    REQUIRE(bloom.contains(bam2a));
-    REQUIRE(!bloom.contains(bam2b));
-  }
-
-  SECTION("Contains 2 mates") {
-    REQUIRE(!bloom.contains_mate(bam1a));
-    REQUIRE(bloom.contains_mate(bam1b));
-    REQUIRE(!bloom.contains_mate(bam2a));
-    REQUIRE(bloom.contains_mate(bam2b));
-  }
-
-  SECTION("Clear") {
-    bloom.clear();
-
-    REQUIRE(!bloom.contains(bam1a));
-    REQUIRE(!bloom.contains(bam1b));
-    REQUIRE(!bloom.contains(bam2a));
-    REQUIRE(!bloom.contains(bam2b));
-
-    REQUIRE(!bloom.contains_mate(bam1a));
-    REQUIRE(!bloom.contains_mate(bam1b));
-    REQUIRE(!bloom.contains_mate(bam2a));
-    REQUIRE(!bloom.contains_mate(bam2b));
-  }
-
+  test_bloom(bam1a, bam1b, bam2a, bam2b, &bloom1);
+  test_bloom(bam1a, bam1b, bam2a, bam2b, &bloom2);
 
   bam1a->data = NULL;
   bam1b->data = NULL;

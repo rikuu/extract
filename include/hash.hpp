@@ -23,13 +23,59 @@ inline size_t hash_alignment2(const bam1_t *bam) {
     ((((bam->core.flag & BAM_FREAD2) != 0) ? 1 : 2) << 8);
 }
 
+class bloom_filter {
+public:
+  virtual void clear() = 0;
+  virtual void push(const bam1_t *) = 0;
+  virtual bool contains(const bam1_t *) const = 0;
+  virtual bool contains_mate(const bam1_t *) const = 0;
+};
+
+class bloom_exact : public bloom_filter {
+private:
+  std::vector<size_t> m_vector;
+
+public:
+  bloom_exact() {}
+
+  inline void clear() {
+    m_vector.clear();
+  }
+
+  inline void push(const bam1_t *bam) {
+    m_vector.push_back(hash_alignment1(bam));
+  }
+
+  inline bool contains(const bam1_t *bam) const {
+    const size_t hash = hash_alignment1(bam);
+    for (size_t i = 0; i < m_vector.size(); i++) {
+      if (m_vector[i] == hash) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  inline bool contains_mate(const bam1_t *bam) const {
+    const size_t hash = hash_alignment2(bam);
+    for (size_t i = 0; i < m_vector.size(); i++) {
+      if (m_vector[i] == hash) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
 // TODO: Use multiple hash functions to reduce collisions
-class bloom {
+class bloom_hash : public bloom_filter {
 private:
   std::vector<bool> m_vector;
 
 public:
-  bloom() {
+  bloom_hash() {
     m_vector.resize(BLOOM_SIZE);
   }
 
