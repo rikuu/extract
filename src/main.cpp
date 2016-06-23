@@ -12,10 +12,10 @@
 
 int main(int argc, char* argv[]) {
   // TODO: Actual argument parsing
-  if (argc != 11) {
+  if (argc != 12) {
     std::cerr << "Usage: " << argv[0] << " <alignment>.bam" <<
       " <read length> <mu> <sd>" <<
-      " <scaffold name> <gap start> <gap end>" <<
+      " <scaffold name> <gap start> <gap end> <gap length>" <<
       " <exact> <unmapped> <threshold>" << std::endl;
 
     return 1;
@@ -34,14 +34,15 @@ int main(int argc, char* argv[]) {
   const int tid = bam_name2id(io.header, argv[5]);
   const int start = std::stoi(argv[6]);
   const int end = std::stoi(argv[7]);
+  const int length = std::stoi(argv[8]);
 
-  const bool exact = std::stoi(argv[8]) == 1;
-  const bool unmapped = std::stoi(argv[9]) == 1;
-  const int threshold = std::stoi(argv[10]);
+  const bool exact = std::stoi(argv[9]) == 1;
+  const bool unmapped = std::stoi(argv[10]) == 1;
+  const int threshold = std::stoi(argv[11]);
 
   run_extract(io,
     read_length, mean_insert, std_dev,
-    tid, start, end,
+    tid, start, end, length,
     exact, unmapped, threshold);
 
   io.unload();

@@ -29,9 +29,9 @@ void print_fasta(const bam1_t *bam, char* buffer) {
     << sequence << std::endl;
 }
 
-size_t process_region(const io_t io, const int tid, const int start,
+int process_region(const io_t io, const int tid, const int start,
     const int end, char* buffer, bloom_filter *bloom) {
-  size_t seqlen = 0;
+  int seqlen = 0;
 
   iterator iter(io, tid, start, end);
   while (iter.next()) {
@@ -67,8 +67,8 @@ void process_mates(const io_t io, const int tid, const int start,
   // });
 }
 
-size_t find_mates(const io_t io, char *buffer, bloom_filter *bloom) {
-  size_t seqlen = 0;
+int find_mates(const io_t io, char *buffer, bloom_filter *bloom) {
+  int seqlen = 0;
 
   iterator iter(io, ".");
   while (iter.next()) {
@@ -105,7 +105,7 @@ void process_unmapped(const io_t io, char* buffer, bloom_filter *bloom) {
 
 void run_extract(const io_t io,
     const int read_length, const int mean_insert, const int std_dev,
-    const int tid, const int start, const int end,
+    const int tid, const int start, const int end, const int length,
     const bool exact, const bool unmapped, const int threshold) {
   bloom_filter *bloom = NULL;
   if (exact) {
@@ -133,15 +133,16 @@ void run_extract(const io_t io,
   // Allocate memory for string conversions
   char *buffer = new char[read_length+1];
 
-  const size_t seqlen =
+  const int seqlen =
       process_region(io, tid, start, end, buffer, bloom) +
       find_mates(io, buffer, bloom);
 
-  // TODO: Make threshold not hard-coded
-  if (unmapped && (seqlen / (end - start) < (unsigned) threshold)) {
+  if (unmapped && ((seqlen / length) < threshold)) {
     process_unmapped(io, buffer, bloom);
   }
 
   delete[] buffer;
-  delete bloom;
+
+  // TODO: Figure out how to not leak memory here
+  // delete bloom;
 }
