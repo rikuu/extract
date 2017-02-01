@@ -54,6 +54,6 @@ target_link_libraries("extract" hts)
 target_link_libraries("extract-test" hts)
 
 # we add a compiler flag
-SET(CXX_WARNINGS "-Wall")# -Weverything -Wno-c++98-compat -Wno-vla -Wno-vla-extension -Wno-c++98-compat-pedantic")
+SET(CXX_WARNINGS "-Wall -Weverything -Wno-c++98-compat -Wno-vla -Wno-vla-extension -Wno-c++98-compat-pedantic -pedantic")
 SET(GCC_COMPILE_MAP_FLAGS "-std=c++0x -g")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COMPILE_MAP_FLAGS} ${CXX_WARNINGS}")
