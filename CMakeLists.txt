@@ -34,7 +34,7 @@ add_definitions (${gatb-core-flags})
 include_directories (SYSTEM src  ${gatb-core-includes})
 
 # htslib
-SET(HTSLIB_HOME ${PROJECT_SOURCE_DIR}/../htslib/)
+SET(HTSLIB_HOME ${PROJECT_SOURCE_DIR}/thirdparty/htslib/)
 LINK_DIRECTORIES(${HTSLIB_HOME})
 include_directories(SYSTEM ${HTSLIB_HOME})
 
