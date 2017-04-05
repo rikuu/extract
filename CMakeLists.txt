@@ -49,11 +49,10 @@ add_executable("extract" ${EXTRACT_SOURCES})
 add_executable("extract-test" ${EXTRACT_TEST_SOURCES})
 
 # we define which libraries to be linked with project binary
-target_link_libraries("extract" ${gatb-core-libraries})
-target_link_libraries("extract" hts)
+target_link_libraries("extract" ${gatb-core-libraries} hts)
 target_link_libraries("extract-test" hts)
 
 # we add a compiler flag
 SET(CXX_WARNINGS "-Wall -Weverything -Wno-c++98-compat -Wno-vla -Wno-vla-extension -Wno-c++98-compat-pedantic -pedantic")
-SET(GCC_COMPILE_MAP_FLAGS "-std=c++0x -g")
+SET(GCC_COMPILE_MAP_FLAGS "-std=c++11 -g")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COMPILE_MAP_FLAGS} ${CXX_WARNINGS}")

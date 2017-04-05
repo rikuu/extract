@@ -27,17 +27,23 @@
 
 class io_t {
  public:
-  samFile *sam = NULL;
-  bam_hdr_t *header = NULL;
-  hts_idx_t *idx = NULL;
-  bool loaded = false;
+  samFile *sam = nullptr;
+  bam_hdr_t *header = nullptr;
+  hts_idx_t *idx = nullptr;
 
   io_t(const std::string &);
 
   void unload() {
     bam_hdr_destroy(this->header);
     sam_close(this->sam);
-    loaded = false;
+
+    sam = nullptr;
+    header = nullptr;
+    idx = nullptr;
+  }
+
+  inline bool loaded() const {
+    return (sam != nullptr && header != nullptr && idx != nullptr);
   }
 };
 

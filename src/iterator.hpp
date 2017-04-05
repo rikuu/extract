@@ -38,7 +38,7 @@ public:
   sam_iterator(const io_t io, const int tid, const int start, const int end)
       : m_sam(io.sam), bam(bam_init1()) {
     m_iter = sam_itr_queryi(io.idx, tid, start, end);
-    if (m_iter == NULL) {
+    if (m_iter == nullptr) {
       std::cerr << "WARNING: SAM iterator is NULL!" << std::endl;
     }
   }
@@ -46,7 +46,7 @@ public:
   sam_iterator(const io_t io, const char *string)
       : m_sam(io.sam), bam(bam_init1()) {
     m_iter = sam_itr_querys(io.idx, io.header, string);
-    if (m_iter == NULL) {
+    if (m_iter == nullptr) {
       std::cerr << "WARNING: SAM iterator is NULL!" << std::endl;
     }
   }
@@ -61,9 +61,9 @@ public:
   // Move constructor
   sam_iterator(sam_iterator&& other) noexcept :
       m_sam(other.m_sam), m_iter(other.m_iter), bam(other.bam) {
-    other.m_sam = NULL;
-    other.m_iter = NULL;
-    other.bam = NULL;
+    other.m_sam = nullptr;
+    other.m_iter = nullptr;
+    other.bam = nullptr;
   }
 
   // Copy assignment operator
@@ -82,9 +82,9 @@ public:
     m_iter = other.m_iter;
     bam = other.bam;
 
-    other.m_sam = NULL;
-    other.m_iter = NULL;
-    other.bam = NULL;
+    other.m_sam = nullptr;
+    other.m_iter = nullptr;
+    other.bam = nullptr;
 
     return *this;
   }
@@ -96,7 +96,7 @@ public:
   }
 
   inline bool next() {
-    if (m_iter == NULL) return false;
+    if (m_iter == nullptr) return false;
     return (sam_itr_next(m_sam, m_iter, bam) >= 0);
   }
 };
