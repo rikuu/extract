@@ -45,7 +45,8 @@ static const char* STR_STD_DEV = "-std-dev";
 static const char* STR_REGION = "-region";
 
 static const char* STR_THRESHOLD = "-unmapped";
-static const char* STR_ONLY_UNMAPPED= "-unmapped-only";
+static const char* STR_ONLY_UNMAPPED = "-unmapped-only";
+static const char* STR_OVERLAP = "-overlap";
 
 /*****************************************************************************/
 
@@ -65,6 +66,7 @@ Extract::Extract() : Tool("Extract") {
   // Unmapped read parameters
   getParser()->push_front(new OptionOneParam(STR_THRESHOLD, "Threshold for using unmapped reads", false, "0"));
   getParser()->push_front(new OptionNoParam(STR_ONLY_UNMAPPED, "Only output unmapped reads"));
+  getParser()->push_front(new OptionNoParam(STR_OVERLAP, "Output overlapping reads"));
 }
 
 /*****************************************************************************/
@@ -170,6 +172,7 @@ void Extract::execute() {
 
   const int threshold = static_cast<int>(getInput()->getInt(STR_THRESHOLD));
   const bool unmapped_only = getParser()->saw(STR_ONLY_UNMAPPED);
+  const bool overlap = getParser()->saw(STR_OVERLAP);
 
   // Parse samtools style region
   const size_t comma = region.find(":");
@@ -199,7 +202,7 @@ void Extract::execute() {
 
   // Open output file
   BankFasta reads(output);
-  int seqlen = 0, reads_extracted = 0;
+  int seqlen = 0, reads_extracted = 0, unmapped_extracted = 0;
 
   if (!unmapped_only) {
     // Compute scaffold id from scaffold name
@@ -219,15 +222,18 @@ void Extract::execute() {
     find_mates(io, buffer, bloom, &reads, &seqlen, &reads_extracted);
 
     // Output overlapping reads
-    process_region(io, tid, start, end, buffer, bloom, &reads, &seqlen, &reads_extracted);
+    if (overlap) {
+      process_region(io, tid, start, end, buffer, bloom, &reads, &seqlen, &reads_extracted);
+    }
   }
 
   // Output unmapped reads
   if (unmapped_only || (seqlen / (end - start)) < threshold) {
-    process_unmapped(io, buffer, bloom, &reads, &reads_extracted);
+    process_unmapped(io, buffer, bloom, &reads, &unmapped_extracted);
   }
 
-  std::cout << "Extracted " << reads_extracted << " out of " << num_of_reads << " reads" << std::endl;
+  std::cout << "Extracted " << reads_extracted << "(+" << unmapped_extracted <<
+    ") out of " << num_of_reads << " reads" << std::endl;
 
   // Cleanup
   reads.flush();
