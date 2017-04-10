@@ -43,10 +43,11 @@ static const char* STR_MEAN = "-mean";
 static const char* STR_STD_DEV = "-std-dev";
 
 static const char* STR_REGION = "-region";
+static const char* STR_INSERTION = "-insertion";
 
 static const char* STR_THRESHOLD = "-unmapped";
 static const char* STR_ONLY_UNMAPPED = "-unmapped-only";
-static const char* STR_OVERLAP = "-overlap";
+static const char* STR_NO_OVERLAP = "-no-overlap";
 
 /*****************************************************************************/
 
@@ -62,11 +63,12 @@ Extract::Extract() : Tool("Extract") {
 
   // Gap parameters
   getParser()->push_front(new OptionOneParam(STR_REGION, "Region for filtering", true));
+  getParser()->push_front(new OptionNoParam(STR_INSERTION, "Insertion filtering"));
 
   // Unmapped read parameters
   getParser()->push_front(new OptionOneParam(STR_THRESHOLD, "Threshold for using unmapped reads", false, "0"));
   getParser()->push_front(new OptionNoParam(STR_ONLY_UNMAPPED, "Only output unmapped reads"));
-  getParser()->push_front(new OptionNoParam(STR_OVERLAP, "Output overlapping reads"));
+  getParser()->push_front(new OptionNoParam(STR_NO_OVERLAP, "Don't output overlapping reads"));
 }
 
 /*****************************************************************************/
@@ -109,6 +111,7 @@ void Extract::process_mates(const io_t &io, const int tid, const int start,
     const int end, IBloom<std::string> *bloom) {
   sam_iterator iter(io, tid, start, end);
   while (iter.next()) {
+    // TODO: Add even mapped reads
     if ((iter.bam->core.flag & BAM_FMUNMAP) != 0) {
       bloom->insert(bam2string(iter.bam));
     }
@@ -169,10 +172,11 @@ void Extract::execute() {
   const int std_dev = static_cast<int>(getInput()->getInt(STR_STD_DEV));
 
   const std::string region = getInput()->getStr(STR_REGION);
+  const bool insertion = getParser()->saw(STR_INSERTION);
 
   const int threshold = static_cast<int>(getInput()->getInt(STR_THRESHOLD));
   const bool unmapped_only = getParser()->saw(STR_ONLY_UNMAPPED);
-  const bool overlap = getParser()->saw(STR_OVERLAP);
+  const bool no_overlap = getParser()->saw(STR_NO_OVERLAP);
 
   // Parse samtools style region
   const size_t comma = region.find(":");
@@ -183,8 +187,11 @@ void Extract::execute() {
   }
 
   const std::string scaffold = region.substr(0, comma);
-  const int start = std::stoi(region.substr(comma+1, dash-comma));
-  const int end = std::stoi(region.substr(dash+1));
+  const int gap_start = std::stoi(region.substr(comma+1, dash-comma));
+  const int gap_end = std::stoi(region.substr(dash+1));
+
+  const int start = gap_start; // TODO: Move start by flank length in insertion?
+  const int end = insertion ? gap_start : gap_end;
 
   // Load alignment file
   io_t io(alignment);
@@ -222,8 +229,8 @@ void Extract::execute() {
     find_mates(io, buffer, bloom, &reads, &seqlen, &reads_extracted);
 
     // Output overlapping reads
-    if (overlap) {
-      process_region(io, tid, start, end, buffer, bloom, &reads, &seqlen, &reads_extracted);
+    if (!no_overlap) {
+      process_region(io, tid, gap_start, gap_end, buffer, bloom, &reads, &seqlen, &reads_extracted);
     }
   }
 
