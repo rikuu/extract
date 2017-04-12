@@ -107,17 +107,16 @@ void Extract::process_region(const io_t &io, const int tid, const int start,
   }
 }
 
+// Add all reads in a region to a Bloom filter
 void Extract::process_mates(const io_t &io, const int tid, const int start,
     const int end, IBloom<std::string> *bloom) {
   sam_iterator iter(io, tid, start, end);
   while (iter.next()) {
-    // TODO: Add even mapped reads
-    if ((iter.bam->core.flag & BAM_FMUNMAP) != 0) {
-      bloom->insert(bam2string(iter.bam));
-    }
+    bloom->insert(bam2string(iter.bam));
   }
 }
 
+// Output all reads in a Bloom filter
 void Extract::find_mates(const io_t &io, char *buffer, IBloom<std::string> *bloom,
     BankFasta *bank, int *seqlen, int *num_of_reads) {
   sam_iterator iter(io, ".");
@@ -135,7 +134,7 @@ void Extract::process_unmapped(const io_t &io, char* buffer,
     IBloom<std::string> *bloom, BankFasta *bank, int* num_of_reads) {
   // Go through entire BAM file rather than the unmapped reads only.
   // BWA gives unmapped reads with a mapped mate a position, essentially making
-  // it a mapped read. Outputing these reads is debateble.
+  // it a mapped read. Outputting these reads is debateble.
   sam_iterator iter(io, ".");
   while (iter.next()) {
     if ((iter.bam->core.flag & BAM_FUNMAP) != 0 &&
@@ -179,25 +178,27 @@ void Extract::execute() {
   const bool no_overlap = getParser()->saw(STR_NO_OVERLAP);
 
   // Parse samtools style region
-  const size_t comma = region.find(":");
+  const size_t colon = region.find(":");
   const size_t dash = region.find("-");
-  if (comma == std::string::npos || dash == std::string::npos) {
+  if (colon == std::string::npos || dash == std::string::npos) {
     std::cerr << "Malformed region, should be CONTIG:START-END" << std::endl;
-    return;
+    exit(1);
   }
 
-  const std::string scaffold = region.substr(0, comma);
-  const int gap_start = std::stoi(region.substr(comma+1, dash-comma));
+  const std::string scaffold = region.substr(0, colon);
+  const int gap_start = std::stoi(region.substr(colon+1, dash-colon));
   const int gap_end = std::stoi(region.substr(dash+1));
+  const int length = gap_end - gap_start;
 
-  const int start = gap_start; // TODO: Move start by flank length in insertion?
+  // TODO: Move start by flank length in insertion?
+  const int start = gap_start;
   const int end = insertion ? gap_start : gap_end;
 
   // Load alignment file
   io_t io(alignment);
   if (!io.loaded()) {
     std::cerr << "Error loading alignments" << std::endl;
-    return;
+    exit(1);
   }
 
   // Allocate memory for string conversions
@@ -229,18 +230,21 @@ void Extract::execute() {
     find_mates(io, buffer, bloom, &reads, &seqlen, &reads_extracted);
 
     // Output overlapping reads
-    if (!no_overlap) {
-      process_region(io, tid, gap_start, gap_end, buffer, bloom, &reads, &seqlen, &reads_extracted);
+    if (insertion || !no_overlap) {
+      process_region(io, tid, start, end, buffer, bloom, &reads, &seqlen, &reads_extracted);
     }
   }
 
   // Output unmapped reads
-  if (unmapped_only || (seqlen / (end - start)) < threshold) {
+  if (unmapped_only || (seqlen / length) < threshold) {
     process_unmapped(io, buffer, bloom, &reads, &unmapped_extracted);
   }
 
-  std::cout << "Extracted " << reads_extracted << "(+" << unmapped_extracted <<
-    ") out of " << num_of_reads << " reads" << std::endl;
+  std::cout << "Extracted " << reads_extracted;
+  if (unmapped_extracted > 0) {
+    std::cout << "(+" << unmapped_extracted << ")";
+  }
+  std::cout << " out of " << num_of_reads << " reads" << std::endl;
 
   // Cleanup
   reads.flush();
