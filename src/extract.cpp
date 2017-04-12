@@ -103,6 +103,11 @@ void Extract::process_region(const io_t &io, const int tid, const int start,
       print_fasta(iter.bam, buffer, bank);
       *seqlen += strlen(buffer);
       (*num_of_reads)++;
+
+      // Add to Bloom filter, so process_unmapped won't output it again
+      if ((iter.bam->core.flag & BAM_FUNMAP) != 0) {
+        bloom->insert(bam2string(iter.bam));
+      }
     }
   }
 }
@@ -112,6 +117,7 @@ void Extract::process_mates(const io_t &io, const int tid, const int start,
     const int end, IBloom<std::string> *bloom) {
   sam_iterator iter(io, tid, start, end);
   while (iter.next()) {
+    // TODO: Only add if mate is in the right direction
     bloom->insert(bam2string(iter.bam));
   }
 }
@@ -129,12 +135,12 @@ void Extract::find_mates(const io_t &io, char *buffer, IBloom<std::string> *bloo
   }
 }
 
-// Output all unmapped reads
+// Output all unmapped reads not in the Bloom filter
 void Extract::process_unmapped(const io_t &io, char* buffer,
     IBloom<std::string> *bloom, BankFasta *bank, int* num_of_reads) {
-  // Go through entire BAM file rather than the unmapped reads only.
-  // BWA gives unmapped reads with a mapped mate a position, essentially making
-  // it a mapped read. Outputting these reads is debateble.
+  // Unmapped reads with a mapped mate are given positions, as specified by the
+  // SAM/BAM format documentation. Thus, to output all unmapped reads we iterate
+  // the entire file.
   sam_iterator iter(io, ".");
   while (iter.next()) {
     if ((iter.bam->core.flag & BAM_FUNMAP) != 0 &&
@@ -146,13 +152,19 @@ void Extract::process_unmapped(const io_t &io, char* buffer,
 }
 
 // Counts the number of reads by iterating through the alignment file
-uint64_t count_reads(const std::string &filename) {
+uint64_t count_reads(const std::string &filename, int *max_read_length) {
   io_t io(filename);
   sam_iterator iter(io, ".");
 
+  int read_length = 0;
   uint64_t count = 0;
   while (iter.next()) {
     count++;
+    read_length = max(read_length, iter.bam->core.l_qseq);
+  }
+
+  if (max_read_length != nullptr) {
+    *max_read_length = read_length;
   }
 
   io.unload();
@@ -165,8 +177,6 @@ void Extract::execute() {
   const std::string alignment = getInput()->getStr(STR_ALIGNMENT);
   const std::string output = getInput()->getStr(STR_OUTPUT);
 
-  // TODO: Infer read length (assume all reads are same length or nah?)
-  const int read_length = static_cast<int>(getInput()->getInt(STR_READ_LENGTH));
   const int mean_insert = static_cast<int>(getInput()->getInt(STR_MEAN));
   const int std_dev = static_cast<int>(getInput()->getInt(STR_STD_DEV));
 
@@ -177,22 +187,17 @@ void Extract::execute() {
   const bool unmapped_only = getParser()->saw(STR_ONLY_UNMAPPED);
   const bool no_overlap = getParser()->saw(STR_NO_OVERLAP);
 
-  // Parse samtools style region
-  const size_t colon = region.find(":");
-  const size_t dash = region.find("-");
-  if (colon == std::string::npos || dash == std::string::npos) {
-    std::cerr << "Malformed region, should be CONTIG:START-END" << std::endl;
+  // Parse SAMtools style region
+  int start, end;
+  const char *scaffold = hts_parse_reg(region.c_str(), &start, &end);
+  if (scaffold == NULL) {
+    std::cerr << "Error parsing region" << std::endl;
     exit(1);
   }
 
-  const std::string scaffold = region.substr(0, colon);
-  const int gap_start = std::stoi(region.substr(colon+1, dash-colon));
-  const int gap_end = std::stoi(region.substr(dash+1));
-  const int length = gap_end - gap_start;
-
-  // TODO: Move start by flank length in insertion?
-  const int start = gap_start;
-  const int end = insertion ? gap_start : gap_end;
+  const int length = end - start;
+  scaffold = region.substr(0, scaffold - region.c_str()).c_str();
+  end = insertion ? start : end;
 
   // Load alignment file
   io_t io(alignment);
@@ -201,12 +206,13 @@ void Extract::execute() {
     exit(1);
   }
 
+  // Use basic Bloom filter from GATB
+  int read_length = 0;
+  const uint64_t num_of_reads = count_reads(alignment, &read_length);
+  IBloom<std::string> *bloom = new BloomSynchronized<std::string>(5 * num_of_reads);
+
   // Allocate memory for string conversions
   char *buffer = new char[read_length+1];
-
-  // Use basic Bloom filter from GATB
-  const uint64_t num_of_reads = count_reads(alignment);
-  IBloom<std::string> *bloom = new BloomSynchronized<std::string>(5 * num_of_reads);
 
   // Open output file
   BankFasta reads(output);
@@ -214,7 +220,7 @@ void Extract::execute() {
 
   if (!unmapped_only) {
     // Compute scaffold id from scaffold name
-    const int tid = bam_name2id(io.header, scaffold.c_str());
+    const int tid = bam_name2id(io.header, scaffold);
 
     // Extract pairs from the left mappings
     const int left_start = start - (mean_insert + 3*std_dev + 2*read_length);
@@ -230,7 +236,7 @@ void Extract::execute() {
     find_mates(io, buffer, bloom, &reads, &seqlen, &reads_extracted);
 
     // Output overlapping reads
-    if (insertion || !no_overlap) {
+    if (insertion || !no_overlap) {
       process_region(io, tid, start, end, buffer, bloom, &reads, &seqlen, &reads_extracted);
     }
   }
